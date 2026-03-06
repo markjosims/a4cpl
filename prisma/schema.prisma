@@ -1,0 +1,403 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ============================================================================
+// Authentication & Users
+// ============================================================================
+// Note: SQLite doesn't support enums, so we use String fields with comments
+// Valid roles: ADMIN, INSTRUCTOR, STUDENT
+// Valid assessment types: CPL, DIAGNOSTIC, FORMATIVE, SUMMATIVE
+// Valid assessment statuses: DRAFT, REVIEW, PUBLISHED, ARCHIVED
+// Valid session statuses: NOT_STARTED, IN_PROGRESS, COMPLETED, ABANDONED, EXPIRED
+// Valid interaction types: QUESTION, SCENARIO, FOLLOW_UP, CLARIFICATION, SUMMARY
+// Valid CPL recommendations: PENDING_REVIEW, AWARD_CREDIT, PARTIAL_CREDIT, NO_CREDIT, NEEDS_REASSESSMENT
+// Valid feedback types: BUG_REPORT, FEATURE_REQUEST, ASSESSMENT_FEEDBACK, ACCESSIBILITY_ISSUE, EQUITY_CONCERN, GENERAL
+// Valid feedback statuses: NEW, IN_REVIEW, RESOLVED, WONT_FIX
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  passwordHash   String?
+  role           String    @default("STUDENT") // ADMIN, INSTRUCTOR, STUDENT
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Profile information for assessment participants
+  profile        UserProfile?
+
+  // Relations
+  accounts       Account[]
+  sessions       Session[]
+  coursesCreated Course[]           @relation("CourseInstructor")
+  assessmentSessions AssessmentSession[]
+  feedbackEntries    FeedbackEntry[]
+
+  @@index([email])
+}
+
+model UserProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Background information for equity-aware assessment
+  experienceType      String?  // e.g., "CalFire", "CDCR Fire Camp", "Military", "Volunteer"
+  yearsExperience     Int?
+  certifications      String?  // JSON array of certifications
+  educationLevel      String?
+  preferredLanguage   String   @default("en")
+  accessibilityNeeds  String?  // JSON array of accessibility preferences
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================================
+// Course & Learning Outcomes
+// ============================================================================
+
+model Course {
+  id           String   @id @default(cuid())
+  code         String   @unique  // e.g., "FIRETEK 217"
+  title        String             // e.g., "Wildland Fire Control"
+  description  String?
+  department   String?            // e.g., "Fire Technology"
+  credits      Int      @default(3)
+  isActive     Boolean  @default(true)
+
+  instructorId String
+  instructor   User     @relation("CourseInstructor", fields: [instructorId], references: [id])
+
+  // Course materials (stored as JSON references)
+  materials    String?  // JSON array of material references
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  learningOutcomes LearningOutcome[]
+  assessments      Assessment[]
+
+  @@index([code])
+  @@index([instructorId])
+}
+
+model LearningOutcome {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  code        String   // e.g., "LO1", "LO2"
+  title       String   // e.g., "Understand wildfire behavior"
+  description String   // Detailed description
+  category    String?  // e.g., "Knowledge", "Skills", "Application"
+
+  // Proficiency criteria
+  criteria    String?  // JSON array of proficiency criteria
+  weight      Float    @default(1.0)  // Relative importance
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  rubricCriteria RubricCriteria[]
+  outcomeResults OutcomeResult[]
+
+  @@unique([courseId, code])
+  @@index([courseId])
+}
+
+// ============================================================================
+// Assessment Configuration
+// ============================================================================
+
+model Assessment {
+  id           String   @id @default(cuid())
+  courseId     String
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  title        String   // e.g., "CPL Assessment - Wildland Fire Control"
+  description  String?
+  type         String   @default("CPL") // CPL, DIAGNOSTIC, FORMATIVE, SUMMATIVE
+  status       String   @default("DRAFT") // DRAFT, REVIEW, PUBLISHED, ARCHIVED
+
+  // Configuration
+  config       String?  // JSON configuration object
+  timeLimit    Int?     // Time limit in minutes (null = no limit)
+  passingScore Float    @default(70.0)  // Percentage required to pass
+
+  // AI configuration
+  aiModel      String   @default("claude-3-sonnet")
+  systemPrompt String?  // Custom system prompt for this assessment
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  publishedAt  DateTime?
+
+  // Relations
+  rubric       Rubric?
+  sessions     AssessmentSession[]
+
+  @@index([courseId])
+  @@index([status])
+}
+
+model Rubric {
+  id           String   @id @default(cuid())
+  assessmentId String   @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  title        String
+  description  String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  criteria     RubricCriteria[]
+}
+
+model RubricCriteria {
+  id                String   @id @default(cuid())
+  rubricId          String
+  rubric            Rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+
+  learningOutcomeId String?
+  learningOutcome   LearningOutcome? @relation(fields: [learningOutcomeId], references: [id])
+
+  title             String
+  description       String?
+  maxScore          Float    @default(100.0)
+  weight            Float    @default(1.0)
+
+  // Scoring levels (JSON array)
+  levels            String?  // e.g., [{"score": 100, "label": "Mastery", "description": "..."}]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([rubricId])
+  @@index([learningOutcomeId])
+}
+
+
+// ============================================================================
+// Assessment Sessions & Results
+// ============================================================================
+
+model AssessmentSession {
+  id           String   @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+
+  status       String   @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED, ABANDONED, EXPIRED
+
+  startedAt    DateTime?
+  completedAt  DateTime?
+  timeSpent    Int?     // Total time in seconds
+
+  // Session metadata
+  metadata     String?  // JSON object with session context
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  interactions Interaction[]
+  result       AssessmentResult?
+
+  @@index([assessmentId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Interaction {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  sequence  Int      // Order of interaction in session
+  type      String   // QUESTION, SCENARIO, FOLLOW_UP, CLARIFICATION, SUMMARY
+
+  // Content
+  prompt    String   // AI prompt or question
+  response  String?  // User response
+
+  // AI evaluation (populated after response)
+  evaluation String? // JSON object with AI evaluation
+
+  // Metadata
+  metadata   String? // JSON object with additional context
+  timestamp  DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([sequence])
+}
+
+model AssessmentResult {
+  id        String   @id @default(cuid())
+  sessionId String   @unique
+  session   AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  // Overall scores
+  overallScore    Float
+  passingScore    Float
+  passed          Boolean
+
+  // CPL recommendation
+  cplRecommendation String   @default("PENDING_REVIEW") // PENDING_REVIEW, AWARD_CREDIT, PARTIAL_CREDIT, NO_CREDIT, NEEDS_REASSESSMENT
+  cplNotes          String?
+
+  // AI-generated feedback
+  strengths         String?  // JSON array
+  areasForGrowth    String?  // JSON array
+  studyGuide        String?  // Personalized study recommendations
+
+  // Faculty validation
+  facultyValidated  Boolean  @default(false)
+  facultyValidatorId String?
+  facultyNotes      String?
+  validatedAt       DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  outcomeResults    OutcomeResult[]
+
+  @@index([cplRecommendation])
+  @@index([facultyValidated])
+}
+
+model OutcomeResult {
+  id                String   @id @default(cuid())
+  resultId          String
+  result            AssessmentResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  learningOutcomeId String
+  learningOutcome   LearningOutcome @relation(fields: [learningOutcomeId], references: [id])
+
+  score             Float
+  proficiencyLevel  String   // e.g., "Mastery", "Proficient", "Developing", "Beginning"
+  evidence          String?  // JSON array of evidence from interactions
+  feedback          String?
+
+  @@index([resultId])
+  @@index([learningOutcomeId])
+}
+
+
+// ============================================================================
+// Analytics & Feedback
+// ============================================================================
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  sessionId String?
+  userId    String?
+
+  eventType String   // e.g., "session_start", "question_answered", "feedback_submitted"
+  eventData String?  // JSON object with event details
+
+  // For journey mapping
+  pageUrl   String?
+  referrer  String?
+
+  timestamp DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([eventType])
+  @@index([timestamp])
+}
+
+model FeedbackEntry {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  sessionId String?
+  type      String   // BUG_REPORT, FEATURE_REQUEST, ASSESSMENT_FEEDBACK, ACCESSIBILITY_ISSUE, EQUITY_CONCERN, GENERAL
+
+  // Content
+  subject   String?
+  message   String
+  rating    Int?     // 1-5 rating if applicable
+
+  // Bug report specific
+  errorDetails String?
+  stackTrace   String?
+
+  // Status
+  status    String   @default("NEW") // NEW, IN_REVIEW, RESOLVED, WONT_FIX
+  response  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([type])
+  @@index([status])
+}
+
+model ErrorLog {
+  id         String   @id @default(cuid())
+  sessionId  String?
+  userId     String?
+
+  errorType  String
+  message    String
+  stackTrace String?
+  context    String?  // JSON object with error context
+
+  timestamp  DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([errorType])
+  @@index([timestamp])
+}
+
