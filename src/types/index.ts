@@ -14,19 +14,7 @@ export type {
   AnalyticsEvent,
   FeedbackEntry,
   ErrorLog,
-} from "@prisma/client";
-
-// Enums
-export {
-  Role,
-  AssessmentType,
-  AssessmentStatus,
-  SessionStatus,
-  InteractionType,
-  CPLRecommendation,
-  FeedbackType,
-  FeedbackStatus,
-} from "@prisma/client";
+} from "../../generated/prisma/client";
 
 // API Response types
 export interface ApiResponse<T = unknown> {
@@ -60,8 +48,6 @@ export interface AssessmentSessionWithDetails {
     evaluation: string | null;
   }[];
   result: {
-    overallScore: number;
-    passed: boolean;
     cplRecommendation: string;
   } | null;
 }
@@ -70,18 +56,6 @@ export interface AssessmentSessionWithDetails {
 export interface AIMessage {
   role: "system" | "user" | "assistant";
   content: string;
-}
-
-export interface AIEvaluation {
-  score: number;
-  feedback: string;
-  learningOutcomes: {
-    outcomeId: string;
-    demonstrated: boolean;
-    evidence: string;
-  }[];
-  followUpNeeded: boolean;
-  suggestedFollowUp?: string;
 }
 
 export interface AssessmentConfig {

@@ -116,7 +116,7 @@ export default async function DashboardPage() {
                     Status: <span className="capitalize">{session.status.toLowerCase().replace("_", " ")}</span>
                     {session.result && (
                       <span className="ml-2">
-                        | Score: {session.result.overallScore.toFixed(1)}%
+                        | {session.result.cplRecommendation.replace("_", " ")}
                       </span>
                     )}
                   </p>
@@ -257,7 +257,7 @@ function AssessmentCard({
           <p className="text-sm text-gray-600 mt-1">{assessment.description}</p>
           <div className="flex gap-4 mt-3 text-sm text-gray-500">
             <span>{assessment.course.credits} credits</span>
-            <span>Passing: {assessment.passingScore}%</span>
+            <span>Type: {assessment.type}</span>
             {assessment.timeLimit && (
               <span>Time limit: {assessment.timeLimit} min</span>
             )}
