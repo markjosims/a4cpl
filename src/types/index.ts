@@ -14,19 +14,7 @@ export type {
   AnalyticsEvent,
   FeedbackEntry,
   ErrorLog,
-} from "@prisma/client";
-
-// Enums
-export {
-  Role,
-  AssessmentType,
-  AssessmentStatus,
-  SessionStatus,
-  InteractionType,
-  CPLRecommendation,
-  FeedbackType,
-  FeedbackStatus,
-} from "@prisma/client";
+} from "../../generated/prisma/client";
 
 // API Response types
 export interface ApiResponse<T = unknown> {
