@@ -211,7 +211,6 @@ async function main() {
       type: "CPL",
       status: "PUBLISHED",
       timeLimit: null, // No time limit for CPL assessment
-      passingScore: 70.0,
       aiModel: "claude-3-sonnet",
       systemPrompt: `You are an expert Fire Technology instructor assessing a candidate for Credit for Prior Learning in Wildland Fire Control (FIRETEK 217). Your role is to:
 

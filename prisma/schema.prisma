@@ -104,7 +104,6 @@ model Course {
   title        String             // e.g., "Wildland Fire Control"
   description  String?
   department   String?            // e.g., "Fire Technology"
-  credits      Int      @default(3)
   isActive     Boolean  @default(true)
 
   instructorId String
@@ -166,7 +165,6 @@ model Assessment {
   // Configuration
   config       String?  // JSON configuration object
   timeLimit    Int?     // Time limit in minutes (null = no limit)
-  passingScore Float    @default(70.0)  // Percentage required to pass
 
   // AI configuration
   aiModel      String   @default("claude-3-sonnet")

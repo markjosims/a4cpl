@@ -255,13 +255,6 @@ function AssessmentCard({
             {getStatusBadge()}
           </div>
           <p className="text-sm text-gray-600 mt-1">{assessment.description}</p>
-          <div className="flex gap-4 mt-3 text-sm text-gray-500">
-            <span>{assessment.course.credits} credits</span>
-            <span>Passing: {assessment.passingScore}%</span>
-            {assessment.timeLimit && (
-              <span>Time limit: {assessment.timeLimit} min</span>
-            )}
-          </div>
         </div>
         <Link
           href={"/dashboard/assessments/" + assessment.id}
