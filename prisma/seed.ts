@@ -69,7 +69,6 @@ async function main() {
       description:
         "This course covers the characteristics, behavior, and management of wildfires. Topics include fire weather, fuels, topography, fire suppression tactics, safety protocols, and incident command systems. Students will learn to assess fire conditions and apply appropriate suppression strategies.",
       department: "Fire Technology",
-      credits: 3,
       instructorId: instructor.id,
       materials: JSON.stringify([
         { type: "textbook", title: "Firefighter's Handbook on Wildland Firefighting" },

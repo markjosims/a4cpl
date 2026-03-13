@@ -110,7 +110,6 @@ export interface CourseFormData {
   title: string;
   description?: string;
   department?: string;
-  credits: number;
 }
 
 export interface LearningOutcomeFormData {
