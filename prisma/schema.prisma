@@ -284,9 +284,25 @@ model AssessmentResult {
   sessionId String   @unique
   session   AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
+  // Overall scores
+  overallScore    Float
+  passingScore    Float
+  passed          Boolean
+
   // CPL recommendation
   cplRecommendation String   @default("PENDING_REVIEW") // PENDING_REVIEW, AWARD_CREDIT, PARTIAL_CREDIT, NO_CREDIT, NEEDS_REASSESSMENT
   cplNotes          String?
+
+  // AI-generated feedback
+  strengths         String?  // JSON array
+  areasForGrowth    String?  // JSON array
+  studyGuide        String?  // Personalized study recommendations
+
+  // Faculty validation
+  facultyValidated  Boolean  @default(false)
+  facultyValidatorId String?
+  facultyNotes      String?
+  validatedAt       DateTime?
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -295,6 +311,7 @@ model AssessmentResult {
   outcomeResults    OutcomeResult[]
 
   @@index([cplRecommendation])
+  @@index([facultyValidated])
 }
 
 model OutcomeResult {
@@ -305,6 +322,7 @@ model OutcomeResult {
   learningOutcomeId String
   learningOutcome   LearningOutcome @relation(fields: [learningOutcomeId], references: [id])
 
+  score             Float
   proficiencyLevel  String   // e.g., "Mastery", "Proficient", "Developing", "Beginning"
   evidence          String?  // JSON array of evidence from interactions
   feedback          String?
